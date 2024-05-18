@@ -3,7 +3,7 @@ use hex::decode;
 use near_sdk::{env, ext_contract, near, require, Gas, NearToken, Promise};
 
 const PUBLIC_RLP_ENCODED_METHOD_NAMES: [&'static str; 1] = ["6a627842000000000000000000000000"];
-const MPC_CONTRACT_ACCOUNT_ID: &str = "v2.multichain-mpc.testnet";
+const MPC_CONTRACT_ACCOUNT_ID: &str = "v5.multichain-mpc-dev.testnet";
 const COST: NearToken = NearToken::from_near(1);
 
 // interface for cross contract call to mpc contract
@@ -15,15 +15,23 @@ trait MPC {
 // automatically init the contract
 impl Default for Contract {
     fn default() -> Self {
-        Self {}
+        Self {
+            greeting: "Hello".to_string(),
+        }
     }
 }
 
 #[near(contract_state)]
-pub struct Contract {}
+pub struct Contract {
+    greeting: String,
+}
 
 #[near]
 impl Contract {
+    pub fn get_greeting(&self) -> String {
+        self.greeting.clone()
+    }
+
     // proxy to call MPC_CONTRACT_ACCOUNT_ID method sign if COST is deposited
     #[payable]
     pub fn sign(&mut self, rlp_payload: String, path: String, key_version: u32) -> Promise {
@@ -37,13 +45,13 @@ impl Contract {
             }
         }
 
-        // only the Near contract owner can call sign of arbitrary payloads for chain signature accounts based on env::current_account_id()
-        if !public {
-            require!(
-                owner,
-                "only contract owner can sign arbitrary EVM transactions"
-            );
-        }
+//         // only the Near contract owner can call sign of arbitrary payloads for chain signature accounts based on env::current_account_id()
+//         if !public {
+//             require!(
+//                 owner,
+//                 "only contract owner can sign arbitrary EVM transactions"
+//             );
+//         }
 
         // hash and reverse rlp encoded payload
         let payload: [u8; 32] = env::keccak256_array(&decode(rlp_payload).unwrap())
@@ -54,14 +62,16 @@ impl Contract {
             .unwrap();
 
         // check deposit requirement, contract owner doesn't pay
-        let deposit = env::attached_deposit();
-        if !owner {
-            require!(deposit >= COST, "pay the piper");
-        }
+//         TODO: to separate transaction.
+//         let deposit = env::attached_deposit();
+//         if !owner {
+//             require!(deposit >= COST, "pay the piper");
+//         }
 
         // call mpc sign and return promise
         mpc::ext(MPC_CONTRACT_ACCOUNT_ID.parse().unwrap())
-            .with_static_gas(Gas::from_tgas(100))
+            .with_static_gas(Gas::from_tgas(250))
             .sign(payload, path, key_version)
     }
+//         .functionCall("sign", JSON.stringify({ payload, path, key_version: 0 }), NO_DEPOSIT, this.gas_to_use)
 }
