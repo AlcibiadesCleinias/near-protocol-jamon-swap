@@ -49,7 +49,7 @@ pub struct Contract {
 
 }
 
-//  majestic-hearing.testnet
+//  old-bike.testnet
 #[near]
 impl Contract {
     // Create Offer from Seller perspective.
@@ -83,7 +83,7 @@ impl Contract {
     // It uses derivedAddress as Offer Id.
     pub fn withdrawBySeller(&mut self, derivedAddress: String) {
         let key: String = derivedAddress.clone().to_string();
-        require!(self.derivedAddressToIsBuyerDeposited.contains_key(&key), "Derived Address not registered in offers.");
+        require!(self.derivedAddressToIsBuyerDeposited.contains_key(&key), "Derived Address not registered in offers. Or Offer already fulfilled.");
         let isBuyerDeposited = match self.derivedAddressToIsBuyerDeposited.get(&key) {
           Some(x) => x,
           None => panic!("Inconsistent state on contract for derivedAddressToIsBuyerDeposited."),
@@ -116,7 +116,7 @@ impl Contract {
     #[payable]
     pub fn sign(&mut self, rlp_payload: String, path: String, key_version: u32, derivedAddress: String) -> Promise {
         let key: String = derivedAddress.clone().to_string();
-        require!(self.isDerivedAddressInOffer.contains_key(&key), "Derived Address not registered in offers.");
+        require!(self.isDerivedAddressInOffer.contains_key(&key), "Derived Address not registered in offers. Or Offer already fulfilled.");
 
         //         TODO: checks
         let amountToDeposit = match self.derivedAddressToAmount.get(&key) {
