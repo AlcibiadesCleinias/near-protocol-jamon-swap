@@ -49,7 +49,6 @@ pub struct Contract {
 
 }
 
-//  old-bike.testnet
 #[near]
 impl Contract {
     // Create Offer from Seller perspective.
@@ -60,7 +59,7 @@ impl Contract {
     // - the same could be created only once.
     // TODO: lock some collateral from Seller to prevent attack on locked addresses.
     pub fn create_offer(&mut self, derivedAddress: String, expectedAmount: u128) {
-        log!("[Contract] Saving derivedAddress: {}", derivedAddress);
+        log!("[Contract, create_offer] Saving derivedAddress: {}", derivedAddress);
         log!("[Contract] Amount from Buyer: {}", NearToken::from_near(expectedAmount));
         let key: String = derivedAddress.clone().to_string();
         let predecessor_account_id = env::predecessor_account_id();
@@ -83,13 +82,14 @@ impl Contract {
     // It uses derivedAddress as Offer Id.
     pub fn withdrawBySeller(&mut self, derivedAddress: String) {
         let key: String = derivedAddress.clone().to_string();
+        log!("[Contract, withdrawBySeller] Seller withdraw: {}", derivedAddress);
+        require!(self.derivedAddressToAvailableWithdraw.contains_key(&key), "This derivedAddress is not available for withdrawal. Possibly already withdrawn.");
         require!(self.derivedAddressToIsBuyerDeposited.contains_key(&key), "Derived Address not registered in offers. Or Offer already fulfilled.");
         let isBuyerDeposited = match self.derivedAddressToIsBuyerDeposited.get(&key) {
           Some(x) => x,
           None => panic!("Inconsistent state on contract for derivedAddressToIsBuyerDeposited."),
         };
         require!(isBuyerDeposited, "Buyer has not deposited to accept the Offer. Nothing to withdraw.");
-        require!(self.derivedAddressToAvailableWithdraw.contains_key(&key), "This derivedAddress is not available for withdrawal. Possibly already withdrawn.");
 
         let amountToSend = match self.derivedAddressToAmount.get(&key) {
           Some(x) => x,
@@ -108,6 +108,12 @@ impl Contract {
         Promise::new(sendTo.clone()).transfer(NearToken::from_near(amountToSend.clone()));
     }
 
+    #[payable]
+    pub fn test_deposit(&mut self, ) {
+        let deposit = env::attached_deposit();
+        require!(deposit >= NearToken::from_near(1), "Less than 1.");
+    }
+
     // Accept Offer from Buyer perspective after ensured Seller deposited his part on Eth chain (not in this contract).
     // Buyer deposits Near as his part of the Offer.
     // It uses derived address as offer id.
@@ -116,6 +122,7 @@ impl Contract {
     #[payable]
     pub fn sign(&mut self, rlp_payload: String, path: String, key_version: u32, derivedAddress: String) -> Promise {
         let key: String = derivedAddress.clone().to_string();
+        log!("[Contract, sign] Seller withdraw: {}", derivedAddress);
         require!(self.isDerivedAddressInOffer.contains_key(&key), "Derived Address not registered in offers. Or Offer already fulfilled.");
 
         //         TODO: checks
